@@ -24,9 +24,11 @@ isStraightMove (rowA:colA:[]) (rowB:colB:[]) = rowA == rowB || colA == colB
 
 -- e.g., bishop moves
 isDiagonalMove :: SpaceId -> SpaceId -> Bool
-isDiagonalMove (rowA:colA:[]) (rowB:colB:[]) = getAbs rowA rowB == getAbs colA colB
+isDiagonalMove (rowA:colA:[]) (rowB:colB:[]) =
+  getAbs rowA rowB == getAbs colA colB
 
 
+-- True if it's ahead either straight or diagonally.
 isForward :: SpaceId -> SpaceId -> Bool
 isForward id1 id2 = ((||) <$> isInSameColumn id1 <*> isDiagonalMove id1) id2
 
@@ -64,18 +66,20 @@ getMoveValidator space id
 
 
 -- Get all the valid moves for the given space and board.
+-- Returns results as if no other pieces are on board.
 getValidMoves :: Space -> Board -> [ Space ]
 getValidMoves space = filter (getMoveValidator space . getId)
 
 
--- Grab all spaces a piece can move to that follow the rules for how they move,
--- and contain an enemy piece or are empty.
+-- Gets all the spaces a piece can actually move to, e.g.,
+-- spaces that follow the rules for that piece, and are empty
+-- or contain an enemy piece.
 getAvailableMoves :: Space -> Board -> [ Space ]
 getAvailableMoves space = filter (canMoveToSpace color) . getValidMoves space
   where color = getPieceAttribute getColor $ getContent space
 
 
--- Returns all of the unique spaces a person could possibly move to.
+-- Returns all unique spaces a player could move to for all of their pieces.
 getAllMovesByColor :: Color -> Board -> [ Space ]
 getAllMovesByColor color board =
   let spaces = getAllOfColor color board
@@ -83,28 +87,33 @@ getAllMovesByColor color board =
   in nub . concatMap getMoves $ spaces
 
 
+-- True if space isn't occupied by piece of the same color.
 canMoveToSpace :: Maybe Color -> Space -> Bool
 canMoveToSpace color space = isEmptySpace space || hasEnemyPiece color space 
   
   
+-- True if a space contains a piece of the opposite color.
 hasEnemyPiece :: Maybe Color -> Space -> Bool
 hasEnemyPiece color space =
   (not $ isEmptySpace space) &&
   (getPieceAttribute getColor $ getContent space) /= fmap getOppositeColor color 
 
 
--- Grabs all of the spaces on the board that contain pieces of a given color.
+-- All of the spaces on the board that contain pieces of a given color.
 getAllOfColor :: Color -> Board -> [ Space ]
-getAllOfColor desiredColor board = filterBoardBySpaceContent getColorOfPiece board
-  where getColorOfPiece piece = isJust piece && (getPieceAttribute getColor piece == Just desiredColor)
+getAllOfColor desiredColor = 
+  filterBoardBySpaceContent (\piece ->
+    isJust piece && (getPieceAttribute getColor piece == Just desiredColor))
 
 
--- Grabs all of the spaces on the board that contain pieces of a given role.
+-- All of the spaces on the board that contain pieces of a given role.
 getAllOfRole :: Role -> Board -> [ Space ]
-getAllOfRole desiredRole = filterBoardBySpaceContent hasRole
-  where hasRole piece = isJust piece && (getPieceAttribute getRole piece == Just desiredRole)
+getAllOfRole desiredRole =
+  filterBoardBySpaceContent (\piece ->
+    isJust piece && (getPieceAttribute getRole piece == Just desiredRole))
 
 
+-- Helper that returns a given attribute for pieces.
 getPieceAttribute :: (Piece -> a) -> Maybe Piece -> Maybe a
 getPieceAttribute getAttr piece = piece >>= (\p -> Just (getAttr p))
   
