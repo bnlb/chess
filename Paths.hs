@@ -1,4 +1,5 @@
 module Paths (
+  Path,
   getAllDiagonalPaths,
   getAllStraightPaths,
   getPathN,

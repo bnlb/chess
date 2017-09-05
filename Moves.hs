@@ -27,34 +27,32 @@ getKnightMoves space board =
   in filter (not . areFriendly space . getSpaceById board) movesOnBoard
 
 
+-- Converts an array of paths a piece can travel along into space ids
+-- a piece can travel to during its turn.
+getMovesFromPaths :: Space -> Board -> [ Path ] -> [ SpaceId ]
+getMovesFromPaths space board paths =
+  let spaces = map (map (getSpaceById board)) paths
+      moves = map (getUnobstructedMoves space) spaces
+  in map getId $ concat moves
+
+
 getQueenMoves :: Space -> Board -> [ SpaceId ]
 getQueenMoves space board =
-  let
-    id = getId space
-    paths = getAllDiagonalPaths id ++ getAllStraightPaths id
-    spaces = map (map (getSpaceById board)) paths
-    moves = map (getUnobstructedMoves space) spaces 
-  in map getId $ concat moves
+  let id = getId space
+      paths = (++) <$> getAllDiagonalPaths <*> getAllStraightPaths $ id
+  in getMovesFromPaths space board paths
 
 
 getRookMoves :: Space -> Board -> [ SpaceId ]
 getRookMoves space board =
-  let
-    id = getId space
-    paths = getAllStraightPaths id
-    spaces = map (map (getSpaceById board)) paths
-    moves = map (getUnobstructedMoves space) spaces 
-  in map getId $ concat moves
+  let paths = getAllStraightPaths $ getId space
+  in getMovesFromPaths space board paths
 
 
 getBishopMoves :: Space -> Board -> [ SpaceId ]
 getBishopMoves space board =
-  let
-    id = getId space
-    paths = getAllDiagonalPaths id
-    spaces = map (map (getSpaceById board)) paths
-    moves = map (getUnobstructedMoves space) spaces 
-  in map getId $ concat moves
+  let paths = getAllDiagonalPaths $ getId space
+  in getMovesFromPaths space board paths
 
 
 getKingMoves :: Space -> Board -> [ SpaceId ]
@@ -66,39 +64,51 @@ getKingMoves space board =
   in filter (not . areFriendly space . getSpaceById board) movesOnBoard
 
 
+getFirstPawnMoves :: Space -> Board -> [ SpaceId ]
+getFirstPawnMoves space board =
+  let piece = getContent space
+      id = getId space
+      getPath = case piece of
+        (Just Piece { getDirection = Up }) -> getPathN
+        (Just Piece { getDirection = Down }) -> getPathS
+      path = getPath id
+      moves = take 2 path
+  in filter (not . areFriendly space . getSpaceById board) moves
+
+
+getPathIfEnemy :: (SpaceId -> Path) -> Space -> Board -> SpaceId -> Path
+getPathIfEnemy getPath space board id =
+  let pathStartId = head (getPath id)
+      hasEnemy = areEnemies space $ getSpaceById board pathStartId
+  in [ id | hasEnemy ]
+
+
+getAdditionalPawnMoves :: Space -> Board -> [ SpaceId ]
+getAdditionalPawnMoves space board =
+  let piece = getContent space
+      id = getId space
+      getPathLeft = case piece of
+        (Just Piece { getDirection = Up }) -> getPathNW
+        (Just Piece { getDirection = Down }) -> getPathSW
+      getPathRight = case piece of
+        (Just Piece { getDirection = Up }) -> getPathNE
+        (Just Piece { getDirection = Down }) -> getPathSE
+      getPathMain = case piece of
+        (Just Piece { getDirection = Up }) -> getPathN
+        (Just Piece { getDirection = Down }) -> getPathS
+      paths = [ getPathMain id ] ++
+              [ getPathIfEnemy getPathLeft space board id ] ++
+              [ getPathIfEnemy getPathRight space board id ]
+      moves = concatMap (take 1) paths
+  in filter (not . areFriendly space . getSpaceById board) moves
+
+
 getPawnMoves :: Space -> Board -> [ SpaceId ]
 getPawnMoves space board = 
   let piece = getContent space
-      id = getId space
   in case piece of 
-    (Just Piece { getDirection = Up, hasMoved = False }) ->
-      let path = getPathN id
-          moves = take 2 path
-      in filter (not . areFriendly space . getSpaceById board) moves
-    (Just Piece { getDirection = Down, hasMoved = False }) ->
-      let path = getPathS id
-          moves = take 2 path
-      in filter (not . areFriendly space . getSpaceById board) moves
-    (Just Piece { getDirection = Up, hasMoved = True }) ->
-      let idNE = head (getPathNE id)
-          idNW = head (getPathNW id)
-          hasEnemyNE = areEnemies space $ getSpaceById board idNE
-          hasEnemyNW = areEnemies space $ getSpaceById board idNW
-          pathNE = [ idNE | hasEnemyNE ]
-          pathNW = [ idNW | hasEnemyNW ]
-          paths = [ getPathN id ] ++ [ pathNW ] ++ [ pathNE ]
-          moves = concatMap (take 1) paths
-      in filter (not . areFriendly space . getSpaceById board) moves
-    (Just Piece { getDirection = Down, hasMoved = True }) ->
-      let idSE = head (getPathSE id)
-          idSW = head (getPathSW id)
-          hasEnemySE = areEnemies space $ getSpaceById board idSE
-          hasEnemySW = areEnemies space $ getSpaceById board idSW
-          pathSE = [ idSE | hasEnemySE ]
-          pathSW = [ idSW | hasEnemySW ]
-          paths = [ getPathS id ] ++ [ pathSW ] ++ [ pathSE ]
-          moves = concatMap (take 1) paths
-      in filter (not . areFriendly space . getSpaceById board) moves
+    (Just Piece { hasMoved = False }) -> getFirstPawnMoves space board
+    (Just Piece { hasMoved = True }) -> getAdditionalPawnMoves space board
 
 
 -- == To cleanup:
