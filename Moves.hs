@@ -1,5 +1,5 @@
 module Moves (
-  getValidMoves
+  getMoves
 ) where
 
 import Data.Char (ord, chr)
@@ -11,29 +11,13 @@ import Paths
 import Func (funcAnd)
 
 
-getKnightMoves :: Space -> Board -> [ SpaceId ]
-getKnightMoves space board =
-  let [ col, row ] = getId space
-      moves = [
-        [ increment 1 col, increment 2 row ],
-        [ increment 1 col, decrement 2 row ],
-        [ decrement 1 col, increment 2 row ],
-        [ decrement 1 col, decrement 2 row ],
-        [ increment 2 col, increment 1 row ],
-        [ increment 2 col, decrement 1 row ],
-        [ decrement 2 col, increment 1 row ],
-        [ decrement 2 col, decrement 1 row ] ]
+getKingMoves :: Space -> Board -> [ SpaceId ]
+getKingMoves space board =
+  let id = getId space
+      paths = getAllDiagonalPaths id ++ getAllStraightPaths id
+      moves = concatMap (take 1) paths
       movesOnBoard = filter isOnBoard moves
   in filter (not . areFriendly space . getSpaceById board) movesOnBoard
-
-
--- Converts an array of paths a piece can travel along into space ids
--- a piece can travel to during its turn.
-getMovesFromPaths :: Space -> Board -> [ Path ] -> [ SpaceId ]
-getMovesFromPaths space board paths =
-  let spaces = map (map (getSpaceById board)) paths
-      moves = map (getUnobstructedMoves space) spaces
-  in map getId $ concat moves
 
 
 getQueenMoves :: Space -> Board -> [ SpaceId ]
@@ -55,13 +39,28 @@ getBishopMoves space board =
   in getMovesFromPaths space board paths
 
 
-getKingMoves :: Space -> Board -> [ SpaceId ]
-getKingMoves space board =
-  let id = getId space
-      paths = getAllDiagonalPaths id ++ getAllStraightPaths id
-      moves = concatMap (take 1) paths
+getKnightMoves :: Space -> Board -> [ SpaceId ]
+getKnightMoves space board =
+  let [ col, row ] = getId space
+      moves = [
+        [ increment 1 col, increment 2 row ],
+        [ increment 1 col, decrement 2 row ],
+        [ decrement 1 col, increment 2 row ],
+        [ decrement 1 col, decrement 2 row ],
+        [ increment 2 col, increment 1 row ],
+        [ increment 2 col, decrement 1 row ],
+        [ decrement 2 col, increment 1 row ],
+        [ decrement 2 col, decrement 1 row ] ]
       movesOnBoard = filter isOnBoard moves
   in filter (not . areFriendly space . getSpaceById board) movesOnBoard
+
+
+getPawnMoves :: Space -> Board -> [ SpaceId ]
+getPawnMoves space board = 
+  let piece = getContent space
+  in case piece of 
+    (Just Piece { hasMoved = False }) -> getFirstPawnMoves space board
+    (Just Piece { hasMoved = True }) -> getAdditionalPawnMoves space board
 
 
 getFirstPawnMoves :: Space -> Board -> [ SpaceId ]
@@ -74,13 +73,6 @@ getFirstPawnMoves space board =
       path = getPath id
       moves = take 2 path
   in filter (not . areFriendly space . getSpaceById board) moves
-
-
-getPathIfEnemy :: (SpaceId -> Path) -> Space -> Board -> SpaceId -> Path
-getPathIfEnemy getPath space board id =
-  let pathStartId = head (getPath id)
-      hasEnemy = areEnemies space $ getSpaceById board pathStartId
-  in [ id | hasEnemy ]
 
 
 getAdditionalPawnMoves :: Space -> Board -> [ SpaceId ]
@@ -103,38 +95,41 @@ getAdditionalPawnMoves space board =
   in filter (not . areFriendly space . getSpaceById board) moves
 
 
-getPawnMoves :: Space -> Board -> [ SpaceId ]
-getPawnMoves space board = 
-  let piece = getContent space
-  in case piece of 
-    (Just Piece { hasMoved = False }) -> getFirstPawnMoves space board
-    (Just Piece { hasMoved = True }) -> getAdditionalPawnMoves space board
+-- Converts an array of paths a piece can travel along into space ids
+-- a piece can travel to during its turn.
+getMovesFromPaths :: Space -> Board -> [ Path ] -> [ SpaceId ]
+getMovesFromPaths space board paths =
+  let spaces = map (map (getSpaceById board)) paths
+      moves = map (getUnobstructedMoves space) spaces
+  in map getId $ concat moves
 
 
--- == To cleanup:
+-- Returns a path if the first space in the path contains an enemy piece.
+getPathIfEnemy :: (SpaceId -> Path) -> Space -> Board -> SpaceId -> Path
+getPathIfEnemy getPath space board id =
+  let pathStartId = head (getPath id)
+      hasEnemy = areEnemies space $ getSpaceById board pathStartId
+  in [ id | hasEnemy ]
 
--- Get all the valid moves for the given space and board.
-getValidMoves :: Space -> Board -> [ Space ]
-getValidMoves space board = board
+
+-- Given a space and a board, return all the spaces a piece can move to.
+getMoves :: Space -> Board -> [ Space ]
+getMoves space board = board
 
 
 -- Returns all unique spaces a player could move to for all of their pieces.
 getAllMovesByColor :: Color -> Board -> [ Space ]
 getAllMovesByColor color board =
   let spaces = getAllOfColor color board
-      getMoves space = getValidMoves space board
-  in nub . concatMap getMoves $ spaces
+      getValidMoves space = getMoves space board
+  in nub . concatMap getValidMoves $ spaces
 
 
 -- True if a space contains a piece of the same color.
 hasOwnPiece :: Maybe Color -> Space -> Bool
 hasOwnPiece color space =
-  (not $ isEmptySpace space) &&
-  (getPieceAttribute getColor $ getContent space) == color 
-
-
-getSpaceColor :: Space -> Maybe Color
-getSpaceColor space = getPieceAttribute getColor $ getContent space
+  not (isEmptySpace space) &&
+  getPieceAttribute getColor (getContent space) == color 
 
 
 -- Trim the given moves to only contain those moves which occur
@@ -142,26 +137,29 @@ getSpaceColor space = getPieceAttribute getColor $ getContent space
 getUnobstructedMoves :: Space -> [ Space ] -> [ Space ]
 getUnobstructedMoves space1 spaces = 
   let spacesWithIndexes = zip spaces [0..]
-  in map fst $ takeWhile (\(spaceN, i) ->
-    let previousItem = if i == 0 then Nothing else Just (spaces !! (i - 1))
-    in if 
-      areFriendly space1 spaceN ||
-      (isJust previousItem && areEnemies space1 (fromJust previousItem))
-      then False
-      else True) spacesWithIndexes
+  in map fst $ takeWhile (
+    \(spaceN, i) ->
+      let previousItem = if i == 0 then Nothing else Just (spaces !! (i - 1))
+      in not (
+        areFriendly space1 spaceN ||
+        (isJust previousItem && areEnemies space1 (fromJust previousItem))
+      )
+    ) spacesWithIndexes
 
 
 bothSpacesContainPieces :: Space -> Space -> Bool
 bothSpacesContainPieces space1 space2 = 
-  (not $ isEmptySpace space1) && (not $ isEmptySpace space2)
+  not (isEmptySpace space1) && not (isEmptySpace space2)
 
 
+-- True if two spaces are on opposite teams.
 areEnemies:: Space -> Space -> Bool
 areEnemies space1 space2 = 
   bothSpacesContainPieces space1 space2 &&
   getSpaceColor space1 /= getSpaceColor space2
 
 
+-- True if two spaces are on the same team.
 areFriendly :: Space -> Space -> Bool
 areFriendly space1 space2 = 
   bothSpacesContainPieces space1 space2 &&
@@ -182,7 +180,5 @@ getAllOfRole desiredRole =
     isJust piece && (getPieceAttribute getRole piece == Just desiredRole))
 
 
--- Helper that returns a given attribute for pieces.
-getPieceAttribute :: (Piece -> a) -> Maybe Piece -> Maybe a
-getPieceAttribute getAttr piece = piece >>= Just . getAttr
-
+getSpaceColor :: Space -> Maybe Color
+getSpaceColor space = getPieceAttribute getColor $ getContent space

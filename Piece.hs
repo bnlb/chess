@@ -3,7 +3,8 @@ module Piece (
   Color(..),
   Role(..),
   Direction(..),
-  getOppositeColor
+  getOppositeColor,
+  getPieceAttribute
 ) where
 
 
@@ -40,3 +41,7 @@ instance Show Piece where
 getOppositeColor :: Color -> Color
 getOppositeColor White = Black
 getOppositeColor Black = White
+
+
+getPieceAttribute :: (Piece -> a) -> Maybe Piece -> Maybe a
+getPieceAttribute getAttr piece = piece >>= Just . getAttr
