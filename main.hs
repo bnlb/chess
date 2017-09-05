@@ -4,6 +4,9 @@ import Piece
 
 
 main = do
-   print "Welcome to Chess!"
+   putStr "\n\nWelcome to Chess!\n\n"
    let board = setupBoard Black
    putStr $ getBoardString board
+   putStr "\n\nPick your piece (e.g., a4, h1):\n"
+   piece <- getLine
+   print piece

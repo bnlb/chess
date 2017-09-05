@@ -4,6 +4,7 @@ module Func (
 ) where
 
 
+-- Map the application of the following arguments over the given functions.
 mapAp :: [ a -> b -> c ] -> a -> b -> [ c ]
 mapAp fs x y = map (\f -> f x y) fs
 

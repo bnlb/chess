@@ -10,22 +10,26 @@ module Board (
   isInRowBelow,
   isInSameColumn,
   isInSameRow,
+  isOnBoard,
   isEmptySpace,
   getEmptySpaces,
   getOccupiedSpaces,
+  getSpaceById,
   filterBoardBySpaceContent,
   setSpaceContents,
-  getBoardString
+  getBoardString,
+  increment,
+  decrement
 ) where
 
-import Data.Char (ord)
+import Data.Char (ord, chr)
 import Data.Maybe (isJust, isNothing)
 import Data.List (intersperse)
 import Piece
 import Array (slice)
 
 
--- A normal chess id for a space, e.g.: 'a1'
+-- An id for a space, e.g.: 'a1'
 type SpaceId = String
 
 
@@ -48,6 +52,14 @@ instance Show Space where
   show Space { getContent = Just piece } = " " ++ show piece ++ " "
 
 
+getBoardRows :: [ Char ]
+getBoardRows = [ '1'..'8' ]
+
+
+getBoardColumns :: [ Char ]
+getBoardColumns = [ 'a'..'h' ]
+
+
 -- Create and set a board using the given color. Top here refers to the side
 -- of the board that appears on top when printed to the screen.
 setupBoard :: Color -> Board
@@ -58,10 +70,9 @@ setupBoard topColor = setBoard topColor createBoard
 createBoard :: Board
 createBoard =
   do
-    row <- [ 'a'..'h' ]
-    col <- [ '1'..'8' ]
-    return Space { getId = [ row, col ], getContent = Nothing }
-    
+    col <- getBoardColumns
+    row <- getBoardRows
+    return Space { getId = [ col, row ], getContent = Nothing }
 
 
 -- Given a board and a color to use on top, set both sides of the board.
@@ -70,10 +81,15 @@ setBoard topColor =
   setBoardSide (getOppositeColor topColor) . reverse . setBoardSide topColor
 
 
+-- True if a given space id is on the board.
+isOnBoard :: SpaceId -> Bool
+isOnBoard (col:row:[]) = row `elem` getBoardRows && col `elem` getBoardColumns
+
+
 -- Initialize pieces on one side of the board to the given color.
 setBoardSide :: Color -> Board -> Board
 setBoardSide color board = let
-  roles = [ Rook, Bishop, Knight, King, Queen, Knight, Bishop, Rook ] ++ repeat Pawn
+  roles = [ Rook, Knight, Bishop, King, Queen, Bishop, Knight, Rook ] ++ repeat Pawn
   boardToSet = slice 0 15 board
   restOfBoard = slice 16 63 board
   setToRole (space, role) = setSpaceContents (Just (getPiece role color)) space
@@ -92,13 +108,13 @@ setSpaceContents contents space = space { getContent = contents }
 
 
 -- Returns a space on the board given an id.
-getSpaceById :: SpaceId -> Board -> Space
-getSpaceById targetId = head . filter (\space -> getId space == targetId)
+getSpaceById :: Board -> SpaceId -> Space
+getSpaceById board id = head $ filter (\space -> getId space == id) board
 
 
 -- Returns the contents of a space given an id.
 getSpaceContentsById :: SpaceId -> Board -> Maybe Piece
-getSpaceContentsById spaceId board = getContent $ getSpaceById spaceId board
+getSpaceContentsById spaceId board = getContent $ getSpaceById board spaceId
 
 
 filterBoardBySpaceContent :: (Maybe Piece -> Bool) -> Board -> [ Space ]
@@ -106,7 +122,7 @@ filterBoardBySpaceContent func = filter $ func . getContent
 
 
 isEmptySpace :: Space -> Bool
-isEmptySpace = isJust . getContent
+isEmptySpace = isNothing . getContent
 
 
 getEmptySpaces :: Board -> [ Space ]
@@ -143,7 +159,7 @@ getBoardString :: Board -> String
 getBoardString board =
   let
     rows = getRows board []
-    withIndex = zip rows [1..]
+    withIndex = zip rows [8, 7..1]
     rowsWithNums = map getRowWithNumbers withIndex
     finalRows = [ getLetterRow ] ++ rowsWithNums  ++  [ getLetterRow ]
   in unlines finalRows
@@ -173,3 +189,13 @@ getRows board built =
   let nextSegment = take 8 board
       restOfBoard = drop 8 board
   in getRows restOfBoard $ built ++ [ nextSegment ]
+
+
+-- Used to increment rows or columns.
+increment :: Int -> Char -> Char
+increment val c = chr $ ord c + val
+
+
+-- Used to decrement rows or columns.
+decrement :: Int -> Char -> Char
+decrement val c = chr $ ord c - val
