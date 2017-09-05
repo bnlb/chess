@@ -13,7 +13,7 @@ import Func (funcAnd)
 
 getKnightMoves :: Space -> Board -> [ SpaceId ]
 getKnightMoves space board =
-  let [col, row] = getId space
+  let [ col, row ] = getId space
       moves = [
         [ increment 1 col, increment 2 row ],
         [ increment 1 col, decrement 2 row ],

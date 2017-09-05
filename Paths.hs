@@ -72,13 +72,13 @@ getPathE [ col, row ] =
   reverse . map (\c -> [c, row]) $ takeWhile (\c -> ord c > ord col) ['h'..'i']
 
 
--- Return array of paths going in all diagonal diretions.
+-- Return array of paths going in all diagonal directions.
 getAllDiagonalPaths :: SpaceId -> [ Path ]
 getAllDiagonalPaths id =
   map ($id) [ getPathNE, getPathNW, getPathSW, getPathSE ]
 
 
--- Return array of paths going in all straight diretions.
+-- Return array of paths going in all straight directions.
 getAllStraightPaths :: SpaceId -> [ Path ]
 getAllStraightPaths id =
   map ($id) [ getPathN, getPathW, getPathS, getPathE ]

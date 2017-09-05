@@ -83,7 +83,7 @@ setBoard topColor =
 
 -- True if a given space id is on the board.
 isOnBoard :: SpaceId -> Bool
-isOnBoard (col:row:[]) = row `elem` getBoardRows && col `elem` getBoardColumns
+isOnBoard [ col, row ] = row `elem` getBoardRows && col `elem` getBoardColumns
 
 
 -- Initialize pieces on one side of the board to the given color.
@@ -134,19 +134,19 @@ getOccupiedSpaces = filter (not . isEmptySpace)
 
 
 isInSameColumn :: SpaceId -> SpaceId -> Bool
-isInSameColumn (_:colA) (_:colB) = colA == colB
+isInSameColumn [ colA, _ ] [ colB, _ ] = colA == colB
 
 
 isInSameRow :: SpaceId -> SpaceId -> Bool
-isInSameRow (rowA:_) (rowB:_) = rowA == rowB
+isInSameRow [ _, rowA ] [ _, rowB ] = rowA == rowB
 
 
 isInRowAbove :: SpaceId -> SpaceId -> Bool
-isInRowAbove (rowA:_) (rowB: _) = ord rowA < ord rowB
+isInRowAbove [ _, rowA ] [ _, rowB ] = ord rowA < ord rowB
 
 
 isInRowBelow :: SpaceId -> SpaceId -> Bool
-isInRowBelow (rowA:_) (rowB: _) = ord rowA > ord rowB
+isInRowBelow [ _, rowA] [ _, rowB ] = ord rowA > ord rowB
 
 
 -- Get the absolute value between two rows or two columns.
