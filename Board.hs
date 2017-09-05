@@ -15,8 +15,11 @@ module Board (
   getEmptySpaces,
   getOccupiedSpaces,
   getSpaceById,
+  getEmptySpace,
   filterBoardBySpaceContent,
   setSpaceContents,
+  getPieceBySpaceId,
+  setSpace,
   getBoardString,
   increment,
   decrement
@@ -72,18 +75,17 @@ createBoard =
   do
     col <- getBoardColumns
     row <- getBoardRows
-    return Space { getId = [ col, row ], getContent = Nothing }
+    return $ getEmptySpace [ col, row ]
+
+
+getEmptySpace :: SpaceId -> Space
+getEmptySpace id = Space { getId = id, getContent = Nothing }
 
 
 -- Given a board and a color to use on top, set both sides of the board.
 setBoard :: Color -> Board -> Board
 setBoard topColor =
   setBoardSide (getOppositeColor topColor) . reverse . setBoardSide topColor
-
-
--- True if a given space id is on the board.
-isOnBoard :: SpaceId -> Bool
-isOnBoard [ col, row ] = row `elem` getBoardRows && col `elem` getBoardColumns
 
 
 -- Initialize pieces on one side of the board to the given color.
@@ -96,25 +98,38 @@ setBoardSide color board = let
   in (zipWith (curry setToRole) boardToSet roles) ++ restOfBoard
 
 
+-- True if a given space id is on the board.
+isOnBoard :: SpaceId -> Bool
+isOnBoard [ col, row ] = row `elem` getBoardRows && col `elem` getBoardColumns
+isOnBoard _ = False
+
+
 -- Return a new piece with some defaults applied.
 getPiece:: Role -> Color -> Piece
 getPiece role color = 
   Piece { getColor = color, getRole = role, getDirection = All, hasMoved = False }
 
 
--- Update the contents of a given space to contain a piece.
+-- Update a space to contain the given contents.
 setSpaceContents :: Maybe Piece -> Space -> Space
 setSpaceContents contents space = space { getContent = contents }
 
 
--- Returns a space on the board given an id.
+-- Update the board so that the given contents are on the given id.
+setSpace :: Maybe Piece -> SpaceId -> Board -> Board
+setSpace contents id board =
+  map (
+    \space -> 
+    if getId space == id then setSpaceContents contents space else space
+    ) board
+
+
 getSpaceById :: Board -> SpaceId -> Space
 getSpaceById board id = head $ filter (\space -> getId space == id) board
 
 
--- Returns the contents of a space given an id.
-getSpaceContentsById :: SpaceId -> Board -> Maybe Piece
-getSpaceContentsById spaceId board = getContent $ getSpaceById board spaceId
+getPieceBySpaceId :: SpaceId -> Board -> Maybe Piece
+getPieceBySpaceId spaceId board = getContent $ getSpaceById board spaceId
 
 
 filterBoardBySpaceContent :: (Maybe Piece -> Bool) -> Board -> [ Space ]
@@ -159,7 +174,7 @@ getBoardString :: Board -> String
 getBoardString board =
   let
     rows = getRows board []
-    withIndex = zip rows [8, 7..1]
+    withIndex = zip rows [ 8, 7..1 ]
     rowsWithNums = map getRowWithNumbers withIndex
     finalRows = [ getLetterRow ] ++ rowsWithNums  ++  [ getLetterRow ]
   in unlines finalRows
@@ -173,17 +188,17 @@ getLetterRow =
 
 
 -- Return a string representation of a row.
-getRow :: [Space] -> String
+getRow :: [ Space ] -> String
 getRow row = concat . intersperse "|" $ map (\space -> show space) row
 
 
 -- Return a string representation of a row with numbers added.
-getRowWithNumbers :: ([Space], Int) -> String
+getRowWithNumbers :: ([ Space ], Int) -> String
 getRowWithNumbers (row, i) = show i ++ " " ++ getRow row ++ " " ++ show i
 
 
 -- Break up our flat board array into rows of 8 items each.
-getRows :: Board -> [[Space]] -> [[Space]]
+getRows :: Board -> [[ Space ]] -> [[ Space ]]
 getRows [] built = built
 getRows board built = 
   let nextSegment = take 8 board

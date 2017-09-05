@@ -1,5 +1,8 @@
 module Moves (
-  getMoves
+  getMoves,
+  getAllOfColor,
+  getAllOfRole,
+  getAllMovesByColor
 ) where
 
 import Data.Char (ord, chr)
@@ -113,16 +116,27 @@ getPathIfEnemy getPath space board id =
 
 
 -- Given a space and a board, return all the spaces a piece can move to.
-getMoves :: Space -> Board -> [ Space ]
-getMoves space board = board
+getMoves :: SpaceId -> Board -> [ SpaceId ]
+getMoves id board =
+  let role = getPieceAttribute getRole . getContent $ getSpaceById board id
+      space = getSpaceById board id
+      getRoleMoves = case role of
+        Just King -> getKingMoves
+        Just Queen -> getQueenMoves
+        Just Rook -> getRookMoves
+        Just Bishop -> getBishopMoves
+        Just Knight -> getKnightMoves
+        Just Pawn -> getPawnMoves
+        Nothing -> (\_ _ -> [])
+  in getRoleMoves space board
 
 
 -- Returns all unique spaces a player could move to for all of their pieces.
-getAllMovesByColor :: Color -> Board -> [ Space ]
+getAllMovesByColor :: Color -> Board -> [ SpaceId ]
 getAllMovesByColor color board =
-  let spaces = getAllOfColor color board
-      getValidMoves space = getMoves space board
-  in nub . concatMap getValidMoves $ spaces
+  let ids = map getId $ getAllOfColor color board
+      getValidMoves id = getMoves id board
+  in nub . concatMap getValidMoves $ ids
 
 
 -- True if a space contains a piece of the same color.
