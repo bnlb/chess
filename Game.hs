@@ -11,15 +11,16 @@ import Piece
 import Debug.Trace (trace)
 
 
--- Consider it checkmate if all of king's possible moves
--- are within all of opponents possible moves.
+-- Consider it checkmate if the king has at least one move left,
+-- and all of the kings moves are contained in all of the opponent's
+-- possible moves.
 isInCheckmate :: Color -> Board -> Bool
 isInCheckmate color board =
   let opponentsColor = getOppositeColor color
       kingId = getId . head . getAllOfColor color . getAllOfRole King $ board
       kingsMoves = getMoves kingId board
       opponentsMoves = getAllMovesByColor (getOppositeColor color) board
-  in null (kingsMoves \\ opponentsMoves)
+  in null (kingsMoves \\ opponentsMoves) && (not . null) kingsMoves
 
 
 play :: IO ()
@@ -28,7 +29,6 @@ play = do
   putStr "\nPick a color to play as: ('white', 'black') \n\n"
   player1Color <- fmap getColorFromInput getLine
   let board = setupBoard player1Color
-  putStr $ getBoardString board
   takeTurn player1Color board
 
 
@@ -42,11 +42,12 @@ getColorFromInput input
 takeTurn :: Color -> Board -> IO ()
 takeTurn color board =
   if isInCheckmate color board
-  then putStr "Checkmate!"
+  then print "Checkmate!"
   else do
     putStr $ getBoardString board
     target <- getTarget color board
-    destination <- getDestination target board
+    let moves = getMoves target board
+    destination <- getDestination target moves
     let updatedBoard = movePiece target destination board
     takeTurn (getOppositeColor color) updatedBoard
 
@@ -67,25 +68,25 @@ formatInput input
 
 getTarget :: Color -> Board -> IO SpaceId
 getTarget color board = do
-  putStr "\n\nPick your piece: (a4, h1, etc)"
+  print "Pick your piece: (a4, h1, etc)"
   id <- fmap formatInput getLine
-  let possibleTargets = map getId $ getAllOfColor color board
-  if id `elem` possibleTargets
-    then 
+  let targets = map getId $ getAllOfColor color board
+      targetsWithMoves = filter (hasMoves board) targets
+  if id `elem` targetsWithMoves
+    then
       return id
     else do 
-      putStr "\nInvalid piece. Try again."
+      print "Invalid piece. Try again."
       getTarget color board
 
 
-getDestination :: SpaceId -> Board -> IO SpaceId
-getDestination targetId board = do
-putStr "\n\nPick your destination: (a4, h1, etc)"
-id <- fmap formatInput getLine
-let moves = getMoves id board
-if id `elem` moves
-  then 
-    return id
-  else do
-    putStr "\nInvalid move. Try again."
-    getDestination targetId board
+getDestination :: SpaceId -> [ SpaceId ] -> IO SpaceId
+getDestination targetId moves = do
+  print "Pick your destination: (a4, h1, etc)"
+  id <- fmap formatInput getLine
+  if id `elem` moves
+    then
+      return id
+    else do
+      print "Invalid move. Try again."
+      getDestination targetId moves

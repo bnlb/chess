@@ -2,7 +2,8 @@ module Moves (
   getMoves,
   getAllOfColor,
   getAllOfRole,
-  getAllMovesByColor
+  getAllMovesByColor,
+  hasMoves
 ) where
 
 import Data.Char (ord, chr)
@@ -131,6 +132,10 @@ getMoves id board =
         Just Pawn -> getPawnMoves
         Nothing -> (\_ _ -> [])
   in getRoleMoves space board
+
+
+hasMoves :: Board -> SpaceId -> Bool
+hasMoves board id = not . null $ getMoves id board
 
 
 -- Returns all unique spaces a player could move to for all of their pieces.
