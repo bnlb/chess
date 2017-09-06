@@ -8,7 +8,7 @@ module Piece (
 ) where
 
 
--- Some basic enums to describe pieces on the board.
+-- Some basic enums to describe piece attributes.
 data Color = White | Black deriving (Eq, Show)
 data Role = King | Queen | Bishop | Knight | Rook | Pawn deriving (Eq, Show)
 data Direction = Up | Down | All deriving (Eq, Show)
@@ -19,7 +19,7 @@ data Piece = Piece {
   getRole :: Role,
   getDirection :: Direction,
   hasMoved :: Bool
-} deriving (Eq)
+}
 
 
 -- Use unicode symbols when printing.

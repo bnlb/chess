@@ -5,20 +5,12 @@ module Board (
   Space(..),
   Board(..),
   setupBoard,
-  getAbs,
-  isInRowAbove,
-  isInRowBelow,
-  isInSameColumn,
-  isInSameRow,
   isOnBoard,
   isEmptySpace,
-  getEmptySpaces,
-  getOccupiedSpaces,
   getSpaceById,
   getBoardColumns,
   getBoardRows,
   filterBoardBySpaceContent,
-  setSpaceContents,
   getPieceBySpaceId,
   setSpace,
   getBoardString,
@@ -27,11 +19,10 @@ module Board (
 ) where
 
 import Data.Char (ord, chr)
-import Data.Maybe (isJust, isNothing)
+import Data.Maybe (isNothing)
 import Data.List (intersperse)
 import Piece
 import Array (slice)
-import Debug.Trace (trace)
 
 
 -- An id for a space, e.g.: 'a1'
@@ -42,7 +33,7 @@ type SpaceId = String
 data Space = Space {
   getId :: SpaceId,
   getContent :: Maybe Piece
-} deriving (Eq)
+}
 
 
 -- Our board is just an array of spaces. It's kept flat to make mapping/filtering
@@ -144,35 +135,6 @@ filterBoardBySpaceContent func = filter (func . getContent)
 
 isEmptySpace :: Space -> Bool
 isEmptySpace = isNothing . getContent
-
-
-getEmptySpaces :: Board -> [ Space ]
-getEmptySpaces = filter isEmptySpace
-
-
-getOccupiedSpaces :: Board -> [ Space ]
-getOccupiedSpaces = filter (not . isEmptySpace)
-
-
-isInSameColumn :: SpaceId -> SpaceId -> Bool
-isInSameColumn [ colA, _ ] [ colB, _ ] = colA == colB
-
-
-isInSameRow :: SpaceId -> SpaceId -> Bool
-isInSameRow [ _, rowA ] [ _, rowB ] = rowA == rowB
-
-
-isInRowAbove :: SpaceId -> SpaceId -> Bool
-isInRowAbove [ _, rowA ] [ _, rowB ] = ord rowA < ord rowB
-
-
-isInRowBelow :: SpaceId -> SpaceId -> Bool
-isInRowBelow [ _, rowA] [ _, rowB ] = ord rowA > ord rowB
-
-
--- Get the absolute value between two rows or two columns.
-getAbs :: Char -> Char -> Int
-getAbs a b = (abs $ ord a - ord b)
 
 
 -- Used to print the board.
