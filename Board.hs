@@ -195,7 +195,7 @@ getLetterRow =
 
 -- Return a string representation of a row.
 getRow :: [ Space ] -> String
-getRow row = concat . intersperse "|" $ map (\space -> show space) row
+getRow row = reverse . concat . intersperse "|" $ map (\space -> show space) row
 
 
 -- Return a string representation of a row with numbers added.
