@@ -15,7 +15,8 @@ module Board (
   getEmptySpaces,
   getOccupiedSpaces,
   getSpaceById,
-  getEmptySpace,
+  getBoardColumns,
+  getBoardRows,
   filterBoardBySpaceContent,
   setSpaceContents,
   getPieceBySpaceId,
@@ -30,6 +31,7 @@ import Data.Maybe (isJust, isNothing)
 import Data.List (intersperse)
 import Piece
 import Array (slice)
+import Debug.Trace (trace)
 
 
 -- An id for a space, e.g.: 'a1'
@@ -73,29 +75,33 @@ setupBoard topColor = setBoard topColor createBoard
 createBoard :: Board
 createBoard =
   do
-    col <- getBoardColumns
     row <- getBoardRows
-    return $ getEmptySpace [ col, row ]
-
-
-getEmptySpace :: SpaceId -> Space
-getEmptySpace id = Space { getId = id, getContent = Nothing }
+    col <- getBoardColumns
+    return $ Space { getId = [ col, row ], getContent = Nothing }
 
 
 -- Given a board and a color to use on top, set both sides of the board.
 setBoard :: Color -> Board -> Board
 setBoard topColor =
-  setBoardSide (getOppositeColor topColor) . reverse . setBoardSide topColor
+  let opponentColor = getOppositeColor topColor
+  in setBoardSide opponentColor Down . reverse . setBoardSide topColor Up
 
 
 -- Initialize pieces on one side of the board to the given color.
-setBoardSide :: Color -> Board -> Board
-setBoardSide color board = let
+setBoardSide :: Color -> Direction -> Board -> Board
+setBoardSide color direction board = let
   roles = [ Rook, Knight, Bishop, King, Queen, Bishop, Knight, Rook ] ++ repeat Pawn
   boardToSet = slice 0 15 board
   restOfBoard = slice 16 63 board
-  setToRole (space, role) = setSpaceContents (Just (getPiece role color)) space
+  setToRole (space, role) = 
+    let piece = getPiece role color (getDirectionForSpace direction role)
+    in setSpaceContents (Just piece) space
   in (zipWith (curry setToRole) boardToSet roles) ++ restOfBoard
+
+
+getDirectionForSpace :: Direction -> Role -> Direction
+getDirectionForSpace direction Pawn = direction
+getDirectionForSpace direction _ = All
 
 
 -- True if a given space id is on the board.
@@ -105,9 +111,9 @@ isOnBoard _ = False
 
 
 -- Return a new piece with some defaults applied.
-getPiece:: Role -> Color -> Piece
-getPiece role color = 
-  Piece { getColor = color, getRole = role, getDirection = All, hasMoved = False }
+getPiece:: Role -> Color -> Direction -> Piece
+getPiece role color direction = 
+  Piece { getColor = color, getRole = role, getDirection = direction, hasMoved = False }
 
 
 -- Update a space to contain the given contents.
@@ -133,7 +139,7 @@ getPieceBySpaceId spaceId board = getContent $ getSpaceById board spaceId
 
 
 filterBoardBySpaceContent :: (Maybe Piece -> Bool) -> Board -> [ Space ]
-filterBoardBySpaceContent func = filter $ func . getContent
+filterBoardBySpaceContent func = filter (func . getContent)
 
 
 isEmptySpace :: Space -> Bool

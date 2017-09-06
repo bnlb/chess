@@ -8,6 +8,7 @@ module Moves (
 import Data.Char (ord, chr)
 import Data.List (nub)
 import Data.Maybe (isJust, fromMaybe, fromJust)
+import Debug.Trace (trace)
 import Board
 import Piece
 import Paths
@@ -71,8 +72,9 @@ getFirstPawnMoves space board =
   let piece = getContent space
       id = getId space
       getPath = case piece of
-        (Just Piece { getDirection = Up }) -> getPathN
-        (Just Piece { getDirection = Down }) -> getPathS
+        Just (Piece { getDirection = Up }) -> getPathN
+        Just (Piece { getDirection = Down }) -> getPathS
+        _ -> (\_ -> [])
       path = getPath id
       moves = take 2 path
   in filter (not . areFriendly space . getSpaceById board) moves

@@ -8,6 +8,7 @@ import Data.Char (toLower)
 import Board
 import Moves
 import Piece
+import Debug.Trace (trace)
 
 
 -- Consider it checkmate if all of king's possible moves
@@ -27,6 +28,7 @@ play = do
   putStr "\nPick a color to play as: ('white', 'black') \n\n"
   player1Color <- fmap getColorFromInput getLine
   let board = setupBoard player1Color
+  putStr $ getBoardString board
   takeTurn player1Color board
 
 

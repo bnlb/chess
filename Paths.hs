@@ -55,22 +55,22 @@ getPathSE =
 
 getPathN :: SpaceId -> Path
 getPathN [ col, row ] = 
-  reverse . map (\r -> [col, r]) $ takeWhile (\r -> ord r > ord row) ['8'..'1']
+  reverse . map (\r -> [col, r]) $ takeWhile (\r -> ord r > ord row) $ reverse getBoardRows
 
 
 getPathS :: SpaceId -> Path
 getPathS [ col, row ] =
-  reverse . map (\r -> [col, r]) $ takeWhile (\r -> ord r < ord row) ['1'..'8']
+  reverse . map (\r -> [col, r]) $ takeWhile (\r -> ord r < ord row) getBoardRows
 
 
 getPathW :: SpaceId -> Path
 getPathW [ col, row ] =
-  reverse . map (\c -> [c, row]) $ takeWhile (\c -> ord c < ord col) ['a'..'h']
+  reverse . map (\c -> [c, row]) $ takeWhile (\c -> ord c < ord col) getBoardColumns
 
 
 getPathE :: SpaceId -> Path
 getPathE [ col, row ] =
-  reverse . map (\c -> [c, row]) $ takeWhile (\c -> ord c > ord col) ['h'..'i']
+  reverse . map (\c -> [c, row]) $ takeWhile (\c -> ord c > ord col) $ reverse getBoardColumns
 
 
 -- These return arrays of paths so that each path can be individually
@@ -96,6 +96,7 @@ getAllStraightPaths id =
 -- on the path, build up a diagonal path.
 getDiagonalPath :: (SpaceId -> SpaceId) -> SpaceId -> Path
 getDiagonalPath getNextId id =
-  if not $ isOnBoard id
-  then []
-  else let nextId = getNextId id in nextId : getDiagonalPath getNextId nextId
+  let nextId = getNextId id
+  in if not $ isOnBoard nextId
+    then []
+    else nextId : getDiagonalPath getNextId nextId
