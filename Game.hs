@@ -9,6 +9,7 @@ import Moves
 import Piece
 
 
+-- Let's the user pick a color and kicks off the game.
 play :: IO ()
 play = do
   putStr "\n\nWelcome to Chess!\n\n"
@@ -18,6 +19,7 @@ play = do
   takeTurn player1Color board
 
 
+-- Continue taking turns until checkmate occurs.
 takeTurn :: Color -> Board -> IO ()
 takeTurn color board =
   if isInCheckmate color board
@@ -31,11 +33,12 @@ takeTurn color board =
     takeTurn (getOppositeColor color) updatedBoard
 
 
+-- Prompts user for a piece to move until a valid option is chosen.
 getTarget :: Color -> Board -> IO SpaceId
 getTarget color board = do
   putStrLn "Pick your piece: (a4, h1, etc)"
   id <- fmap formatInput getLine
-  let targets = map getId $ getAllOfColor color board
+  let targets = map getId $ getSpacesByColor color board
       targetsWithMoves = filter (hasMoves board) targets
   if id `elem` targetsWithMoves
     then
@@ -45,6 +48,8 @@ getTarget color board = do
       getTarget color board
 
 
+-- Prompts user for a destination for their chosen piece until a valid option
+-- is chosen.
 getDestination :: SpaceId -> [ SpaceId ] -> IO SpaceId
 getDestination targetId moves = do
   putStrLn "Pick your destination: (a4, h1, etc)"
@@ -57,21 +62,20 @@ getDestination targetId moves = do
       getDestination targetId moves
 
 
--- Consider it checkmate if the king has at least one move left,
--- and all of the kings moves are contained in all of the opponent's
--- possible moves.
-
--- Consider it checkmate if both:
--- a) All of the kings moves are in all of the opponent's moves.
--- b) For all of the possible moves a player has, none of them
---    block the kings location from being in the opponent's moves.
-
--- Moving king
-  -- all of moves in all of opps moves
-
--- Moving piece
-  -- For all own possible moves, calc opps possible moves
-  -- if any of those moves contain kings location
+-- Consider it checkmate if:
+--   a) the king has spaces it can move to, and all of those spaces are also
+--      spaces the opposing team's pieces can move to.
+--   b) the king's team can't move any of its pieces in such a way as to prevent
+--      the king's location from being a space the opposing team can move to.
+isInCheckmate :: Color -> Board -> Bool
+isInCheckmate color board =
+  let opponentsColor = getOppositeColor color
+      kingId = getId . head . getSpacesByColor color . getSpacesByRole King $ board
+      kingsMoves = snd $ getMoves kingId board
+      kingsTeamMoves = getMovesByColor color board
+      opponentsMoves = getMovesByColor opponentsColor board
+      kingCanBeSaved = teamCanSaveKing kingId kingsTeamMoves opponentsColor board
+  in kingIsStuck kingsMoves opponentsMoves && not kingCanBeSaved
 
 
 -- True if moving a piece from the target to the destination
@@ -79,25 +83,17 @@ getDestination targetId moves = do
 canSaveKing :: SpaceId -> Color -> Board -> (SpaceId, Move) -> Bool
 canSaveKing kingId enemyColor board (pieceId, destinationId) =
   let updatedBoard = movePiece pieceId destinationId board
-      enemyMoves = flattenMoves $ getAllMovesByColor enemyColor updatedBoard
+      enemyMoves = flattenMoves $ getMovesByColor enemyColor updatedBoard
   in notElem kingId enemyMoves
 
 
-pieceCanSaveKing :: SpaceId -> [ Moves ] -> Color -> Board -> Bool
-pieceCanSaveKing kingId kingTeamMoves enemyColor board =
+-- True if any of the pieces on the same team as the king can move in such a
+-- way as to prevent the king's location from being in one of the opposing teams
+-- next moves.
+teamCanSaveKing :: SpaceId -> [ Moves ] -> Color -> Board -> Bool
+teamCanSaveKing kingId kingTeamMoves enemyColor board =
   let flatten = concatMap (\(id, moves) -> map (\m -> (id, m)) moves)
   in all (canSaveKing kingId enemyColor board) (flatten kingTeamMoves)
-
-
-isInCheckmate :: Color -> Board -> Bool
-isInCheckmate color board =
-  let opponentsColor = getOppositeColor color
-      kingId = getId . head . getAllOfColor color . getAllOfRole King $ board
-      kingsMoves = snd $ getMoves kingId board
-      kingsTeam = getAllMovesByColor color board
-      opponentsMoves = getAllMovesByColor opponentsColor board
-      kingCanBeSaved = pieceCanSaveKing kingId opponentsMoves opponentsColor board
-  in kingIsStuck kingsMoves opponentsMoves && not kingCanBeSaved
 
 
 -- True if all of the king's moves are contained in all of opponent's moves.

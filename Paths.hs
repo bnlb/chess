@@ -73,10 +73,6 @@ getPathE [ col, row ] =
   reverse . map (\c -> [c, row]) $ takeWhile (\c -> ord c > ord col) $ reverse getBoardColumns
 
 
--- These return arrays of paths so that each path can be individually
--- mapped before being used.
-
-
 -- Return array of paths going in all diagonal directions. e.g., NE, NW, etc.
 getAllDiagonalPaths :: SpaceId -> [ Path ]
 getAllDiagonalPaths id =

@@ -22,7 +22,7 @@ data Piece = Piece {
 }
 
 
--- Use unicode symbols when printing.
+-- Use unicode symbols for printing.
 instance Show Piece where
   show Piece { getColor = White, getRole = King } = "\x2654"
   show Piece { getColor = White, getRole = Queen } = "\x2655"
