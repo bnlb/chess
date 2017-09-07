@@ -136,13 +136,21 @@ setBoard color =
 -- Set pieces on one side of the board to the given color.
 setBoardSide :: Color -> Direction -> Board -> Board
 setBoardSide color direction board = 
-  let roles = [ Rook, Knight, Bishop, King, Queen, Bishop, Knight, Rook ] ++ repeat Pawn
+  let roles = getRolesByColor color
       boardToSet = slice 0 15 board
       restOfBoard = slice 16 63 board
       setToRole (space, role) = 
         let piece = getPiece role color (getDirectionForPiece direction role)
         in setSpaceContents (Just piece) space
   in (zipWith (curry setToRole) boardToSet roles) ++ restOfBoard
+
+
+-- Queen is always on a space that's the same color as the queen.
+getRolesByColor :: Color -> [ Role ]
+getRolesByColor White =
+  [ Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook ] ++ repeat Pawn
+getRolesByColor Black =
+  [ Rook, Knight, Bishop, King, Queen, Bishop, Knight, Rook ] ++ repeat Pawn
 
 
 getDirectionForPiece :: Direction -> Role -> Direction
