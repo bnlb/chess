@@ -55,22 +55,22 @@ getPathSE =
 
 getPathN :: SpaceId -> Path
 getPathN [ col, row ] = 
-  reverse . map (\r -> [col, r]) $ takeWhile (\r -> ord r > ord row) $ reverse getBoardRows
+  reverse . map (\r -> [col, r]) $ takeWhile (\r -> ord r > ord row) $ reverse getRows
 
 
 getPathS :: SpaceId -> Path
 getPathS [ col, row ] =
-  reverse . map (\r -> [col, r]) $ takeWhile (\r -> ord r < ord row) getBoardRows
+  reverse . map (\r -> [col, r]) $ takeWhile (\r -> ord r < ord row) getRows
 
 
 getPathW :: SpaceId -> Path
 getPathW [ col, row ] =
-  reverse . map (\c -> [c, row]) $ takeWhile (\c -> ord c < ord col) getBoardColumns
+  reverse . map (\c -> [c, row]) $ takeWhile (\c -> ord c < ord col) getColumns
 
 
 getPathE :: SpaceId -> Path
 getPathE [ col, row ] =
-  reverse . map (\c -> [c, row]) $ takeWhile (\c -> ord c > ord col) $ reverse getBoardColumns
+  reverse . map (\c -> [c, row]) $ takeWhile (\c -> ord c > ord col) $ reverse getColumns
 
 
 -- Return array of paths going in all diagonal directions. e.g., NE, NW, etc.
@@ -85,7 +85,7 @@ getAllStraightPaths id =
   map ($id) [ getPathN, getPathW, getPathS, getPathE ]
 
 
--- Helpers 
+-- Private 
 
 
 -- Given a function that determines how to calculate the next space id

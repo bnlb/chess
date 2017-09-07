@@ -4,16 +4,16 @@ module Board (
   SpaceId,
   Space(..),
   Board(..),
-  setupBoard,
+  getRows,
+  getColumns,
   isOnBoard,
+  setupBoard,
   isEmptySpace,
   getSpaceById,
-  getBoardColumns,
-  getBoardRows,
-  filterBoardBySpaceContent,
   getPieceBySpaceId,
   setSpace,
-  getBoardString,
+  filterBySpaceContents,
+  toString,
   increment,
   decrement
 ) where
@@ -38,8 +38,7 @@ data Space = Space {
 
 -- Our board is just an array of spaces. It's kept flat to make mapping and
 -- filtering easier. Any logic related to how pieces can move across the board
--- is done using the ids (e.g., 'a3') of each piece, instead of using array
--- indexes.
+-- is done using the ids of each piece, instead of using array indexes.
 type Board = [ Space ]
 
 
@@ -49,26 +48,81 @@ instance Show Space where
   show Space { getContent = Just piece } = " " ++ show piece ++ " "
 
 
-getBoardRows :: [ Char ]
-getBoardRows = [ '1'..'8' ]
+getRows :: [ Char ]
+getRows = [ '1'..'8' ]
 
 
-getBoardColumns :: [ Char ]
-getBoardColumns = [ 'a'..'h' ]
+getColumns :: [ Char ]
+getColumns = [ 'a'..'h' ]
+
+
+isOnBoard :: SpaceId -> Bool
+isOnBoard [ col, row ] = row `elem` getRows && col `elem` getColumns
+isOnBoard _ = False
 
 
 -- Create and set a board using the given color. The color will be used as
--- the color of the pieces on the side of the board used by the first player.
+-- the color of the pieces on the side of the board used by the player who
+-- takes the first turn.
 setupBoard :: Color -> Board
 setupBoard color = setBoard color createBoard
+
+
+isEmptySpace :: Space -> Bool
+isEmptySpace = isNothing . getContent
+
+
+getSpaceById :: Board -> SpaceId -> Space
+getSpaceById board id = head $ filter (\space -> getId space == id) board
+
+
+getPieceBySpaceId :: SpaceId -> Board -> Maybe Piece
+getPieceBySpaceId spaceId board = getContent $ getSpaceById board spaceId
+
+
+-- Update the board so that the given contents are on the given id.
+setSpace :: Maybe Piece -> SpaceId -> Board -> Board
+setSpace contents id board =
+  map 
+  (\space -> 
+    if getId space == id then setSpaceContents contents space else space
+  )
+  board
+
+
+filterBySpaceContents :: (Maybe Piece -> Bool) -> Board -> [ Space ]
+filterBySpaceContents func = filter (func . getContent)
+
+
+-- Used to print the board.
+toString :: Board -> String
+toString board =
+  let rows = splitIntoRows board []
+      withIndex = zip rows [ 8, 7..1 ]
+      rowString = map getRowStringWithRowNumbers withIndex
+      finalRows = [ getColumnRow ] ++ rowString  ++  [ getColumnRow ]
+  in unlines finalRows
+
+
+-- Used to increment rows or columns.
+increment :: Int -> Char -> Char
+increment val c = chr $ ord c + val
+
+
+-- Used to decrement rows or columns.
+decrement :: Int -> Char -> Char
+decrement val c = chr $ ord c - val
+
+
+-- Private
 
 
 -- Create a board without pieces.
 createBoard :: Board
 createBoard =
   do
-    row <- getBoardRows
-    col <- getBoardColumns
+    row <- getRows
+    col <- getColumns
     return $ Space { getId = [ col, row ], getContent = Nothing }
 
 
@@ -86,23 +140,16 @@ setBoardSide color direction board =
       boardToSet = slice 0 15 board
       restOfBoard = slice 16 63 board
       setToRole (space, role) = 
-        let piece = getPiece role color (getDirectionForSpace direction role)
+        let piece = getPiece role color (getDirectionForPiece direction role)
         in setSpaceContents (Just piece) space
   in (zipWith (curry setToRole) boardToSet roles) ++ restOfBoard
 
 
--- Gets the direction a space can move in based on its role.
-getDirectionForSpace :: Direction -> Role -> Direction
-getDirectionForSpace direction Pawn = direction
-getDirectionForSpace direction _ = All
+getDirectionForPiece :: Direction -> Role -> Direction
+getDirectionForPiece direction Pawn = direction
+getDirectionForPiece direction _ = All
 
 
-isOnBoard :: SpaceId -> Bool
-isOnBoard [ col, row ] = row `elem` getBoardRows && col `elem` getBoardColumns
-isOnBoard _ = False
-
-
--- Return a new piece with some defaults applied.
 getPiece:: Role -> Color -> Direction -> Piece
 getPiece role color direction = 
   Piece { 
@@ -113,79 +160,31 @@ getPiece role color direction =
   }
 
 
--- Update a space to contain the given contents.
 setSpaceContents :: Maybe Piece -> Space -> Space
 setSpaceContents contents space = space { getContent = contents }
 
 
--- Update the board so that the given contents are on the given id.
-setSpace :: Maybe Piece -> SpaceId -> Board -> Board
-setSpace contents id board =
-  map 
-  (\space -> 
-    if getId space == id then setSpaceContents contents space else space
-  )
-  board
-
-
-getSpaceById :: Board -> SpaceId -> Space
-getSpaceById board id = head $ filter (\space -> getId space == id) board
-
-
-getPieceBySpaceId :: SpaceId -> Board -> Maybe Piece
-getPieceBySpaceId spaceId board = getContent $ getSpaceById board spaceId
-
-
-filterBoardBySpaceContent :: (Maybe Piece -> Bool) -> Board -> [ Space ]
-filterBoardBySpaceContent func = filter (func . getContent)
-
-
-isEmptySpace :: Space -> Bool
-isEmptySpace = isNothing . getContent
-
-
--- Used to print the board.
-getBoardString :: Board -> String
-getBoardString board =
-  let rows = getRows board []
-      withIndex = zip rows [ 8, 7..1 ]
-      rowsWithNums = map getRowWithNumbers withIndex
-      finalRows = [ getLetterRow ] ++ rowsWithNums  ++  [ getLetterRow ]
-  in unlines finalRows
-
-
 -- Return a string used to mark columns on the board.
-getLetterRow :: String
-getLetterRow = 
-  let row = concat . intersperse " " $ map (\n -> " " ++ [ n ] ++ " " ) [ 'a'..'h' ]
+getColumnRow :: String
+getColumnRow = 
+  let row = concat . intersperse " " $ map (\n -> " " ++ [ n ] ++ " " ) getColumns
   in "  " ++ row ++ "  "
 
 
--- Return a string representation of a row.
-getRow :: [ Space ] -> String
-getRow row = reverse . concat . intersperse "|" $ map (\space -> show space) row
+getRowString :: [ Space ] -> String
+getRowString row =
+  reverse . concat . intersperse "|" $ map (\space -> show space) row
 
 
--- Return a string representation of a row with row numbers added to the
--- beginning and end of the row.
-getRowWithNumbers :: ([ Space ], Int) -> String
-getRowWithNumbers (row, i) = show i ++ " " ++ getRow row ++ " " ++ show i
+getRowStringWithRowNumbers :: ([ Space ], Int) -> String
+getRowStringWithRowNumbers (row, i) =
+  show i ++ " " ++ getRowString row ++ " " ++ show i
 
 
--- Break our flat board array into rows of 8 items each.
-getRows :: Board -> [[ Space ]] -> [[ Space ]]
-getRows [] built = built
-getRows board built = 
+-- Break our flat board array into rows of 8 spaces each.
+splitIntoRows :: Board -> [[ Space ]] -> [[ Space ]]
+splitIntoRows [] built = built
+splitIntoRows board built = 
   let nextSegment = take 8 board
       restOfBoard = drop 8 board
-  in getRows restOfBoard $ built ++ [ nextSegment ]
-
-
--- Used to increment rows or columns.
-increment :: Int -> Char -> Char
-increment val c = chr $ ord c + val
-
-
--- Used to decrement rows or columns.
-decrement :: Int -> Char -> Char
-decrement val c = chr $ ord c - val
+  in splitIntoRows restOfBoard $ built ++ [ nextSegment ]

@@ -9,7 +9,7 @@ import Moves
 import Piece
 
 
--- Let's the user pick a color and kicks off the game.
+-- Let the user pick a color and kick off the game.
 play :: IO ()
 play = do
   putStr "\n\nWelcome to Chess!\n\n"
@@ -19,13 +19,16 @@ play = do
   takeTurn player1Color board
 
 
+-- Private
+
+
 -- Continue taking turns until checkmate occurs.
 takeTurn :: Color -> Board -> IO ()
 takeTurn color board =
   if isInCheckmate color board
   then putStrLn "Checkmate!"
   else do
-    putStr $ getBoardString board
+    putStr $ toString board
     target <- getTarget color board
     let moves = snd $ getMoves target board
     destination <- getDestination target moves
@@ -33,7 +36,7 @@ takeTurn color board =
     takeTurn (getOppositeColor color) updatedBoard
 
 
--- Prompts user for a piece to move until a valid option is chosen.
+-- Prompt user for a piece to move until a valid option is chosen.
 getTarget :: Color -> Board -> IO SpaceId
 getTarget color board = do
   putStrLn "Pick your piece: (a4, h1, etc)"
@@ -48,7 +51,7 @@ getTarget color board = do
       getTarget color board
 
 
--- Prompts user for a destination for their chosen piece until a valid option
+-- Prompt user for a destination for their chosen piece until a valid option
 -- is chosen.
 getDestination :: SpaceId -> [ SpaceId ] -> IO SpaceId
 getDestination targetId moves = do
@@ -79,7 +82,7 @@ isInCheckmate color board =
 
 
 -- True if moving a piece from the target to the destination
--- removes the king's location from the enemies possible moves.
+-- removes the king's location from the enemy's possible moves.
 canSaveKing :: SpaceId -> Color -> Board -> (SpaceId, Move) -> Bool
 canSaveKing kingId enemyColor board (pieceId, destinationId) =
   let updatedBoard = movePiece pieceId destinationId board
@@ -88,8 +91,8 @@ canSaveKing kingId enemyColor board (pieceId, destinationId) =
 
 
 -- True if any of the pieces on the same team as the king can move in such a
--- way as to prevent the king's location from being in one of the opposing teams
--- next moves.
+-- way as to prevent the king's location from being in one of the opposing
+-- team's next moves.
 teamCanSaveKing :: SpaceId -> [ Moves ] -> Color -> Board -> Bool
 teamCanSaveKing kingId kingTeamMoves enemyColor board =
   let flatten = concatMap (\(id, moves) -> map (\m -> (id, m)) moves)

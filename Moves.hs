@@ -2,9 +2,9 @@ module Moves (
   Move,
   Moves,
   getMoves,
+  getMovesByColor,
   getSpacesByColor,
   getSpacesByRole,
-  getMovesByColor,
   flattenMoves,
   hasMoves
 ) where
@@ -25,6 +25,55 @@ type Move = SpaceId
 -- and the second item is an array of all the space ids on the board that it
 -- can move to.
 type Moves = (SpaceId, [ Move ])
+
+
+-- Get all of the space ids the piece on the given space id can move to.
+getMoves :: SpaceId -> Board -> Moves
+getMoves id board =
+  let role = getPieceAttribute getRole . getContent $ getSpaceById board id
+      space = getSpaceById board id
+      getRoleMoves = case role of
+        Just King -> getKingMoves
+        Just Queen -> getQueenMoves
+        Just Rook -> getRookMoves
+        Just Bishop -> getBishopMoves
+        Just Knight -> getKnightMoves
+        Just Pawn -> getPawnMoves
+        Nothing -> (\_ _ -> [])
+  in (id, getRoleMoves space board)
+
+
+-- Returns all spaces a player could move to for all of their pieces.
+getMovesByColor :: Color -> Board -> [ Moves ]
+getMovesByColor color board =
+  let ids = map getId $ getSpacesByColor color board
+      getValidMoves id = getMoves id board
+  in map getValidMoves $ ids
+
+
+getSpacesByColor :: Color -> Board -> [ Space ]
+getSpacesByColor desiredColor = 
+  filterBySpaceContents (\piece ->
+    isJust piece && (getPieceAttribute getColor piece == Just desiredColor))
+
+
+getSpacesByRole :: Role -> Board -> [ Space ]
+getSpacesByRole desiredRole =
+  filterBySpaceContents (\piece ->
+    isJust piece && (getPieceAttribute getRole piece == Just desiredRole))
+
+
+-- Strip the id info from the given moves and return an array of space ids.
+flattenMoves :: [ Moves ] -> [ Move ]
+flattenMoves = concatMap (\(id, moves) -> moves)
+
+
+-- True if the piece on the given space id has spaces it can move to.
+hasMoves :: Board -> SpaceId -> Bool
+hasMoves board id = not . null . snd $ getMoves id board
+
+
+-- Private
 
 
 getKingMoves :: Space -> Board -> [ Move ]
@@ -135,36 +184,6 @@ getPathIfEnemy getPath space board id =
   in [ id | hasEnemy ]
 
 
--- Given the id of a space and a board, return all of the space ids the piece
--- on the given id can move to.
-getMoves :: SpaceId -> Board -> Moves
-getMoves id board =
-  let role = getPieceAttribute getRole . getContent $ getSpaceById board id
-      space = getSpaceById board id
-      getRoleMoves = case role of
-        Just King -> getKingMoves
-        Just Queen -> getQueenMoves
-        Just Rook -> getRookMoves
-        Just Bishop -> getBishopMoves
-        Just Knight -> getKnightMoves
-        Just Pawn -> getPawnMoves
-        Nothing -> (\_ _ -> [])
-  in (id, getRoleMoves space board)
-
-
--- True if the piece on the given space id has spaces it can move to.
-hasMoves :: Board -> SpaceId -> Bool
-hasMoves board id = not . null . snd $ getMoves id board
-
-
--- Returns all spaces a player could move to for all of their pieces.
-getMovesByColor :: Color -> Board -> [ Moves ]
-getMovesByColor color board =
-  let ids = map getId $ getSpacesByColor color board
-      getValidMoves id = getMoves id board
-  in map getValidMoves $ ids
-
-
  -- Trim the given moves to only contain those moves which occur before another 
  -- piece obstructs the rest of the path.
 getUnobstructedMoves :: Space -> [ Space ] -> [ Space ]
@@ -197,21 +216,5 @@ areFriendly space1 space2 =
   getSpaceColor space1 == getSpaceColor space2
   
   
-getSpacesByColor :: Color -> Board -> [ Space ]
-getSpacesByColor desiredColor = 
-  filterBoardBySpaceContent (\piece ->
-    isJust piece && (getPieceAttribute getColor piece == Just desiredColor))
-
-
-getSpacesByRole :: Role -> Board -> [ Space ]
-getSpacesByRole desiredRole =
-  filterBoardBySpaceContent (\piece ->
-    isJust piece && (getPieceAttribute getRole piece == Just desiredRole))
-
-
 getSpaceColor :: Space -> Maybe Color
 getSpaceColor space = getPieceAttribute getColor $ getContent space
-
-
-flattenMoves :: [ Moves ] -> [ Move ]
-flattenMoves = concatMap (\(id, moves) -> moves)
